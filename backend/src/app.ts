@@ -13,6 +13,18 @@ app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.get('/', (_req, res) => res.json({
+  message: 'Faso Élevage API - Phase 1 MVP 🇧🇫',
+  frontend: process.env.FRONTEND_URL || 'https://frontend-teal-xi-19.vercel.app',
+  health: '/health',
+  endpoints: {
+    listings: '/api/listings?ville=Ouagadougou&espece=POULET',
+    auth: '/api/auth/request-otp',
+    admin: '/api/admin/stats'
+  },
+  docs: 'https://github.com/jmnombo01/faso-elevage/blob/main/API_DOC.md'
+}));
+
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'faso-elevage-api', phase: '1-MVP' }));
 
 app.use('/api/auth', authRoutes);

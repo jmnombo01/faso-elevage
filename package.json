@@ -1,0 +1,8 @@
+{
+  "name": "faso-elevage-root",
+  "private": true,
+  "scripts": {
+    "build": "cd backend && npm ci --legacy-peer-deps && ./node_modules/.bin/prisma generate && npm run build",
+    "start": "cd backend && ./node_modules/.bin/prisma migrate deploy && node dist/server.js"
+  }
+}

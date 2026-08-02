@@ -2,10 +2,10 @@
 nixPkgs = ["nodejs_20"]
 
 [phases.install]
-cmds = ["npm install"]
+cmds = ["npm ci --legacy-peer-deps || npm install --legacy-peer-deps"]
 
 [phases.build]
-cmds = ["npx prisma generate", "npm run build"]
+cmds = ["./node_modules/.bin/prisma generate", "npm run build"]
 
 [start]
-cmd = "npx prisma migrate deploy && node dist/server.js"
+cmd = "./node_modules/.bin/prisma migrate deploy && node dist/server.js"

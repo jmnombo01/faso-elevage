@@ -1,5 +1,6 @@
-# Railway optimized - Phase 1 - Fixed for build
+# Railway optimized - Phase 1 - Fixed openssl for Prisma 5 on Alpine
 FROM node:20-alpine AS builder
+RUN apk add --no-cache openssl
 WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm install --legacy-peer-deps --frozen-lockfile || npm install --legacy-peer-deps
@@ -8,6 +9,7 @@ RUN ./node_modules/.bin/prisma generate
 RUN npm run build
 
 FROM node:20-alpine AS runner
+RUN apk add --no-cache openssl
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=builder /app/dist ./dist

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://schema.up.railway.app/railway.json",
+  "build": {
+    "builder": "nixpacks"
+  },
+  "deploy": {
+    "numReplicas": 1,
+    "restartPolicyType": "onFailure",
+    "restartPolicyMaxRetries": 3
+  }
+}

@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Espece {
+  POULET
+  PINTADE
+  LAPIN
+  BOVIN
+  OVIN
+  CAPRIN
+  PORCIN
+}
+
+enum StatutAnnonce {
+  EN_ATTENTE
+  APPROUVEE
+  REJETEE
+  VENDUE
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum MotifSignalement {
+  ARNAQUE
+  PRIX_ABUSIF
+  PHOTO_TROMPEUSE
+  ANIMAL_MALADE
+  AUTRE
+}
+
+model User {
+  id        String   @id @default(cuid())
+  phone     String   @unique
+  name      String
+  ville     String
+  quartier  String?
+  photoUrl  String?  @map("photo_url")
+  role      Role     @default(USER)
+  isBlocked Boolean  @default(false) @map("is_blocked")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  listings  Listing[]
+  favorites Favorite[]
+  reports   Report[]   @relation("Reporter")
+
+  @@map("users")
+}
+
+model Otp {
+  id        String   @id @default(cuid())
+  phone     String
+  code      String
+  expiresAt DateTime @map("expires_at")
+  attempted Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([phone, code])
+  @@map("otps")
+}
+
+model Listing {
+  id            String        @id @default(cuid())
+  userId        String        @map("user_id")
+  espece        Espece
+  race          String?
+  ageMois       Int?          @map("age_mois")
+  poidsKg       Float?        @map("poids_kg")
+  quantite      Int           @default(1)
+  prixFcfa      Int           @map("prix_fcfa")
+  ville         String
+  quartier      String?
+  description   String?       @db.Text
+  photos        String[]      @default([])
+  disponibilite DateTime?     @db.Date
+  statut        StatutAnnonce @default(EN_ATTENTE)
+  vues          Int           @default(0)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  favorites Favorite[]
+  reports   Report[]
+
+  @@index([espece])
+  @@index([ville])
+  @@index([prixFcfa])
+  @@index([statut])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("listings")
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  listingId String   @map("listing_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, listingId])
+  @@map("favorites")
+}
+
+model Report {
+  id          String           @id @default(cuid())
+  listingId   String           @map("listing_id")
+  reporterId  String?          @map("reporter_id")
+  motif       MotifSignalement
+  description String?          @db.Text
+  isResolved  Boolean          @default(false) @map("is_resolved")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  listing  Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  reporter User?   @relation("Reporter", fields: [reporterId], references: [id], onDelete: SetNull)
+
+  @@index([listingId])
+  @@index([isResolved])
+  @@map("reports")
+}

@@ -1,0 +1,13 @@
+{
+  "name": "Faso Élevage",
+  "short_name": "Faso Élevage",
+  "description": "Vente d'animaux d'élevage au Burkina Faso",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#16A34A",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

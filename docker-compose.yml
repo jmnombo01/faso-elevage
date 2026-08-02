@@ -1,0 +1,32 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: faso_pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: faso
+      POSTGRES_PASSWORD: faso_elevage_2025
+      POSTGRES_DB: faso_elevage
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    container_name: faso_api
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      DATABASE_URL: postgresql://faso:faso_elevage_2025@postgres:5432/faso_elevage
+      JWT_SECRET: super-secret-jwt-faso-elevage-2025
+      CLOUDINARY_CLOUD_NAME: demo
+      CLOUDINARY_API_KEY: demo
+      CLOUDINARY_API_SECRET: demo
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:

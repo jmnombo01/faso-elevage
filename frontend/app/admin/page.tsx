@@ -5,12 +5,30 @@ import { useAuth } from '../../lib/store';
 import Link from 'next/link';
 
 export default function AdminPage() {
-  const { user } = useAuth();
+  const { user: localUser, init } = useAuth();
+  const [freshUser, setFreshUser] = useState<any>(null);
+  const [checking, setChecking] = useState(true);
   const [stats, setStats] = useState<any>(null);
   const [pending, setPending] = useState<any[]>([]);
   const [tab, setTab] = useState<'pending' | 'stats' | 'users' | 'reports'>('pending');
   const [users, setUsers] = useState<any[]>([]);
   const [reports, setReports] = useState<any[]>([]);
+
+  useEffect(() => { init(); }, []);
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      try {
+        const res = await api.get('/auth/me');
+        setFreshUser(res.data);
+      } catch (e) {
+        setFreshUser(null);
+      } finally {
+        setChecking(false);
+      }
+    };
+    checkAdmin();
+  }, []);
 
   const load = async () => {
     try {
@@ -18,9 +36,28 @@ export default function AdminPage() {
       setStats(s.data); setPending(p.data); setUsers(u.data); setReports(r.data);
     } catch (e: any) { console.error(e); }
   };
-  useEffect(() => { load(); }, []);
 
-  if (user?.role !== 'ADMIN') return <div className="card p-8 text-center">Accès admin requis. Connecte-toi avec +22670000099 (seed admin). <Link href="/login" className="btn-primary ml-2">Login</Link></div>;
+  useEffect(() => {
+    if (freshUser?.role === 'ADMIN') load();
+  }, [freshUser]);
+
+  if (checking) return <div className="card p-8 text-center">Vérification rôle admin...</div>;
+
+  const effectiveUser = freshUser || localUser;
+
+  if (effectiveUser?.role !== 'ADMIN') {
+    return (
+      <div className="card p-8 text-center space-y-3">
+        <div className="text-lg font-semibold">Accès admin requis 🔒</div>
+        <div className="text-sm text-gray-600">Connecté en tant que: {effectiveUser?.phone || 'non connecté'} - Rôle: {effectiveUser?.role || 'aucun'}</div>
+        <div className="text-xs text-gray-500">Comptes admin: +22670000099 (Admin Faso) et +22601831421 (JM Nombo). Déconnecte-toi et reconnecte-toi pour rafraîchir le rôle.</div>
+        <div className="flex justify-center gap-2 mt-4">
+          <Link href="/login" className="btn-primary">Se connecter admin</Link>
+          <button onClick={() => { localStorage.clear(); location.reload(); }} className="btn-secondary text-sm">Forcer déconnexion</button>
+        </div>
+      </div>
+    );
+  }
 
   const validate = async (id: string, status: string) => {
     await api.patch(`/admin/listings/${id}/validate`, { status });
@@ -29,8 +66,11 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Admin • Faso Élevage</h1>
-      <div className="flex gap-2">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Admin • Faso Élevage</h1>
+        <div className="text-xs bg-green-50 text-green-700 px-3 py-1 rounded-full">Connecté: {effectiveUser.name} ({effectiveUser.role})</div>
+      </div>
+      <div className="flex gap-2 flex-wrap">
         {(['pending','stats','users','reports'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)} className={`px-4 py-2 rounded-xl text-sm font-medium ${tab === t ? 'bg-primary text-white' : 'bg-white border'}`}>{t}</button>
         ))}
@@ -74,8 +114,8 @@ export default function AdminPage() {
       {tab === 'users' && (
         <div className="card p-0 overflow-auto">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50"><tr><th className="p-3 text-left">Nom</th><th>Téléphone</th><th>Ville</th><th>Annonces</th><th>Action</th></tr></thead>
-            <tbody>{users.map(u => <tr key={u.id} className="border-t"><td className="p-3">{u.name}</td><td>{u.phone}</td><td>{u.ville}</td><td>{u._count.listings}</td><td><button onClick={async () => { await api.patch(`/admin/users/${u.id}/block`, { isBlocked: !u.isBlocked }); load(); }} className="text-xs px-2 py-1 rounded bg-gray-100">{u.isBlocked ? 'Débloquer' : 'Bloquer'}</button></td></tr>)}</tbody>
+            <thead className="bg-gray-50"><tr><th className="p-3 text-left">Nom</th><th>Téléphone</th><th>Ville</th><th>Rôle</th><th>Annonces</th><th>Action</th></tr></thead>
+            <tbody>{users.map(u => <tr key={u.id} className="border-t"><td className="p-3">{u.name}</td><td>{u.phone}</td><td>{u.ville}</td><td><span className={`px-2 py-1 rounded text-xs ${u.role==='ADMIN'?'bg-amber-100 text-amber-700':'bg-gray-100'}`}>{u.role}</span></td><td>{u._count.listings}</td><td><button onClick={async () => { await api.patch(`/admin/users/${u.id}/block`, { isBlocked: !u.isBlocked }); load(); }} className="text-xs px-2 py-1 rounded bg-gray-100">{u.isBlocked ? 'Débloquer' : 'Bloquer'}</button></td></tr>)}</tbody>
           </table>
         </div>
       )}

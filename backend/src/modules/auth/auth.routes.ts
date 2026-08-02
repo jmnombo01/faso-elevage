@@ -3,10 +3,11 @@ import { prisma } from '../../config/db';
 import { signToken } from '../../config/jwt';
 import { otpRequestSchema, otpVerifySchema, phoneSchema } from '../../utils/validator';
 import { authMiddleware, AuthRequest } from '../../middlewares/auth';
+import { sendWhatsAppOtp, getWhatsAppLink } from '../../config/whatsapp';
 
 const router = Router();
 
-// Génère OTP 6 chiffres - mock SMS en dev
+// Génère OTP 6 chiffres
 const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
 
 const normalizePhone = (phone: string) => {
@@ -31,12 +32,20 @@ router.post('/request-otp', async (req, res) => {
     },
   });
 
-  console.log(`\n=== OTP MOCK pour ${phone}: ${code} ===\n`);
-  // TODO prod: appeler API SMS CinetPay / SMS BF
+  console.log(`\n=== OTP pour ${phone}: ${code} ===\n`);
 
-  // En dev on retourne le code pour faciliter les tests
-  const isDev = process.env.NODE_ENV !== 'production';
-  res.json({ message: 'OTP envoyé', ...(isDev && { debugOtp: code }) });
+  // Envoi WhatsApp (avec fallback mock)
+  const waResult = await sendWhatsAppOtp(phone, code);
+  const whatsappLink = getWhatsAppLink(phone, code);
+
+  // Phase 1 MVP: on retourne toujours debugOtp + lien WhatsApp pour tests sans SMS payant
+  res.json({ 
+    message: 'OTP envoyé via WhatsApp',
+    debugOtp: code, 
+    whatsappLink,
+    whatsappStatus: waResult,
+    info: 'Phase 1 MVP: OTP affiché ici + envoyé via WhatsApp si configuré (voir WHATSAPP_PROVIDER)'
+  });
 });
 
 // POST /api/auth/verify-otp

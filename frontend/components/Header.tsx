@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useEffect } from 'react';
 import { useAuth } from '../lib/store';
-import { Heart, User, Plus, Shield, LogOut, Menu } from 'lucide-react';
+import { Heart, User, Plus, LogOut } from 'lucide-react';
 
 export default function Header() {
   const { isAuth, user, init, logout } = useAuth();
@@ -18,7 +18,7 @@ export default function Header() {
         </Link>
 
         <div className="flex items-center gap-2">
-          <Link href="/favoris" className="p-2.5 rounded-xl hover:bg-gray-50">
+          <Link href="/favoris" className="p-2.5 rounded-xl hover:bg-gray-50" title="Favoris">
             <Heart className="w-5 h-5" />
           </Link>
 
@@ -27,17 +27,18 @@ export default function Header() {
               <Link href="/publier" className="hidden md:flex btn-primary py-2.5 text-sm items-center gap-2">
                 <Plus className="w-4 h-4" /> Publier
               </Link>
-              <Link href="/mes-annonces" className="p-2.5 rounded-xl hover:bg-gray-50 md:hidden">
+              <Link href="/mes-annonces" className="p-2.5 rounded-xl hover:bg-gray-50" title="Mes annonces">
                 <User className="w-5 h-5" />
               </Link>
-              <div className="hidden md:flex items-center gap-2">
-                <Link href="/mes-annonces" className="px-3 py-2 rounded-xl hover:bg-gray-50 text-sm font-medium">
+              {/* Bouton Déconnexion - visible partout (mobile + desktop) */}
+              <button onClick={logout} className="p-2.5 rounded-xl hover:bg-gray-50 text-gray-600 hover:text-red-600" title="Déconnexion">
+                <LogOut className="w-5 h-5" />
+              </button>
+              {/* Nom affiché seulement desktop */}
+              <div className="hidden md:flex items-center gap-2 ml-1">
+                <span className="px-3 py-2 rounded-xl bg-gray-50 text-sm font-medium">
                   {user?.name?.split(' ')[0]}
-                </Link>
-                {user?.role === 'ADMIN' && (
-                  <Link href="/admin" className="p-2.5 bg-amber-50 text-amber-700 rounded-xl"><Shield className="w-4 h-4" /></Link>
-                )}
-                <button onClick={logout} className="p-2.5 hover:bg-gray-50 rounded-xl"><LogOut className="w-4 h-4" /></button>
+                </span>
               </div>
             </>
           ) : (

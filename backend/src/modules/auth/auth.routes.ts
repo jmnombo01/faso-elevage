@@ -61,21 +61,23 @@ router.post('/verify-otp', async (req, res) => {
     orderBy: { createdAt: 'desc' },
   });
 
-  if (!existingOtp) return res.status(400).json({ error: 'OTP invalide' });
-  if (existingOtp.expiresAt < new Date()) return res.status(400).json({ error: 'OTP expiré' });
-
-  await prisma.otp.update({ where: { id: existingOtp.id }, data: { attempted: true } });
+  if (!existingOtp) return res.status(400).json({ error: 'OTP invalide - déjà utilisé ou expiré, redemandez un code' });
+  if (existingOtp.expiresAt < new Date()) return res.status(400).json({ error: 'OTP expiré, redemandez' });
 
   let user = await prisma.user.findUnique({ where: { phone } });
 
   if (!user) {
     if (!name || !ville) {
+      // Ne marque PAS attempted=true ici, pour permettre réutilisation du même OTP à l'étape signup
       return res.status(200).json({ needSignup: true, message: 'Nouvel utilisateur, veuillez fournir nom et ville' });
     }
     user = await prisma.user.create({
       data: { phone, name, ville, quartier: '' },
     });
   }
+
+  // Maintenant que tout est OK, marque OTP comme utilisé
+  await prisma.otp.update({ where: { id: existingOtp.id }, data: { attempted: true } });
 
   if (user.isBlocked) return res.status(403).json({ error: 'Compte bloqué' });
 

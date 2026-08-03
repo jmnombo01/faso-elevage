@@ -206,20 +206,66 @@ router.get('/my', authMiddleware, async (req: AuthRequest, res) => {
   res.json(payments);
 });
 
-// GET /api/payments/admin - admin only
+// GET /api/payments/admin - admin only - revenus + paiements par utilisateur
 router.get('/admin', authMiddleware, async (req: AuthRequest, res) => {
   if (req.user!.role !== 'ADMIN') return res.status(403).json({ error: 'Admin requis' });
-  const payments = await prisma.payment.findMany({
-    orderBy: { createdAt: 'desc' },
-    take: 100,
-    include: { user: { select: { name: true, phone: true } }, listing: { select: { race: true } } },
-  });
-  const stats = await prisma.payment.groupBy({
-    by: ['status'],
-    _count: { status: true },
-    _sum: { amountFcfa: true },
-  });
-  res.json({ payments, stats });
+
+  const serialize = (obj: any) => JSON.parse(JSON.stringify(obj, (_, v) => typeof v === 'bigint' ? Number(v) : v));
+
+  const [payments, stats, revenueTotal, revenueToday, revenueWeek, revenueMonth, revenueByDay, revenueByUser, revenueByType] = await Promise.all([
+    prisma.payment.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      include: { user: { select: { name: true, phone: true, ville: true } }, listing: { select: { race: true, espece: true } } },
+    }),
+    prisma.payment.groupBy({
+      by: ['status'],
+      _count: { status: true },
+      _sum: { amountFcfa: true },
+    }),
+    // Revenu total SUCCESS
+    prisma.payment.aggregate({ where: { status: 'SUCCESS' }, _sum: { amountFcfa: true }, _count: { id: true } }),
+    // Aujourd'hui
+    prisma.payment.aggregate({ where: { status: 'SUCCESS', createdAt: { gte: new Date(new Date().setHours(0,0,0,0)) } }, _sum: { amountFcfa: true }, _count: { id: true } }),
+    // Cette semaine (7 jours)
+    prisma.payment.aggregate({ where: { status: 'SUCCESS', createdAt: { gte: new Date(Date.now() - 7*24*60*60*1000) } }, _sum: { amountFcfa: true }, _count: { id: true } }),
+    // Ce mois
+    prisma.payment.aggregate({ where: { status: 'SUCCESS', createdAt: { gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1) } }, _sum: { amountFcfa: true }, _count: { id: true } }),
+    // Par jour (7 derniers jours)
+    prisma.$queryRaw`
+      SELECT DATE(created_at) as date, SUM(amount_fcfa)::int as total, COUNT(*)::int as count
+      FROM payments WHERE status='SUCCESS' AND created_at >= NOW() - INTERVAL '30 days'
+      GROUP BY DATE(created_at) ORDER BY date DESC
+    `,
+    // Par utilisateur (top payeurs)
+    prisma.$queryRaw`
+      SELECT u.phone, u.name, u.ville, SUM(p.amount_fcfa)::int as total_spent, COUNT(p.id)::int as payments_count
+      FROM payments p JOIN users u ON p.user_id = u.id
+      WHERE p.status='SUCCESS'
+      GROUP BY u.phone, u.name, u.ville
+      ORDER BY total_spent DESC LIMIT 20
+    `,
+    // Par type
+    prisma.payment.groupBy({ by: ['type'], where: { status: 'SUCCESS' }, _sum: { amountFcfa: true }, _count: { type: true } }),
+  ]);
+
+  res.json(serialize({
+    payments,
+    stats,
+    revenue: {
+      total: revenueTotal._sum.amountFcfa || 0,
+      totalCount: revenueTotal._count.id,
+      today: revenueToday._sum.amountFcfa || 0,
+      todayCount: revenueToday._count.id,
+      week: revenueWeek._sum.amountFcfa || 0,
+      weekCount: revenueWeek._count.id,
+      month: revenueMonth._sum.amountFcfa || 0,
+      monthCount: revenueMonth._count.id,
+      byDay: revenueByDay,
+      byUser: revenueByUser,
+      byType: revenueByType,
+    }
+  }));
 });
 
 export default router;

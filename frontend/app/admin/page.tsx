@@ -10,9 +10,10 @@ export default function AdminPage() {
   const [checking, setChecking] = useState(true);
   const [stats, setStats] = useState<any>(null);
   const [pending, setPending] = useState<any[]>([]);
-  const [tab, setTab] = useState<'pending' | 'stats' | 'users' | 'reports'>('pending');
+  const [tab, setTab] = useState<'pending' | 'stats' | 'users' | 'reports' | 'payments'>('pending');
   const [users, setUsers] = useState<any[]>([]);
   const [reports, setReports] = useState<any[]>([]);
+  const [paymentsData, setPaymentsData] = useState<any>(null);
 
   useEffect(() => { init(); }, []);
 
@@ -32,8 +33,15 @@ export default function AdminPage() {
 
   const load = async () => {
     try {
-      const [s, p, u, r] = await Promise.all([api.get('/admin/stats'), api.get('/admin/listings/pending'), api.get('/admin/users'), api.get('/admin/reports')]);
+      const [s, p, u, r, pay] = await Promise.all([
+        api.get('/admin/stats'),
+        api.get('/admin/listings/pending'),
+        api.get('/admin/users'),
+        api.get('/admin/reports'),
+        api.get('/payments/admin').catch(() => ({ data: null }))
+      ]);
       setStats(s.data); setPending(p.data); setUsers(u.data); setReports(r.data);
+      if (pay?.data) setPaymentsData(pay.data);
     } catch (e: any) { console.error(e); }
   };
 
@@ -71,8 +79,10 @@ export default function AdminPage() {
         <div className="text-xs bg-green-50 text-green-700 px-3 py-1 rounded-full">Connecté: {effectiveUser.name} ({effectiveUser.role})</div>
       </div>
       <div className="flex gap-2 flex-wrap">
-        {(['pending','stats','users','reports'] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)} className={`px-4 py-2 rounded-xl text-sm font-medium ${tab === t ? 'bg-primary text-white' : 'bg-white border'}`}>{t}</button>
+        {(['pending','stats','users','reports','payments'] as const).map(t => (
+          <button key={t} onClick={() => setTab(t)} className={`px-4 py-2 rounded-xl text-sm font-medium ${tab === t ? 'bg-primary text-white' : 'bg-white border'}`}>
+            {t === 'payments' ? '💰 Revenus' : t}
+          </button>
         ))}
       </div>
 
@@ -129,6 +139,72 @@ export default function AdminPage() {
             </div>
           ))}
           {reports.length === 0 && <div className="card p-8 text-center text-gray-500">Pas de signalements</div>}
+        </div>
+      )}
+
+      {tab === 'payments' && (
+        <div className="space-y-4">
+          {!paymentsData ? <div className="card p-8 text-center">Chargement revenus...</div> : (
+            <>
+              <div className="grid md:grid-cols-4 gap-4">
+                <div className="card p-4 bg-green-50 border-green-200"><div className="text-xs text-green-700">Revenu Total</div><div className="text-2xl font-bold text-green-800">{paymentsData.revenue.total.toLocaleString()} FCFA</div><div className="text-xs text-green-600">{paymentsData.revenue.totalCount} paiements</div></div>
+                <div className="card p-4"><div className="text-xs text-gray-500">Aujourd'hui</div><div className="text-xl font-bold">{paymentsData.revenue.today.toLocaleString()} F</div><div className="text-xs">{paymentsData.revenue.todayCount} paiements</div></div>
+                <div className="card p-4"><div className="text-xs text-gray-500">7 jours</div><div className="text-xl font-bold">{paymentsData.revenue.week.toLocaleString()} F</div><div className="text-xs">{paymentsData.revenue.weekCount} paiements</div></div>
+                <div className="card p-4"><div className="text-xs text-gray-500">Ce mois</div><div className="text-xl font-bold">{paymentsData.revenue.month.toLocaleString()} F</div><div className="text-xs">{paymentsData.revenue.monthCount} paiements</div></div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="card p-4">
+                  <h3 className="font-semibold">Revenu par jour (30j)</h3>
+                  <div className="mt-3 space-y-1 max-h-60 overflow-auto">
+                    {paymentsData.revenue.byDay?.map((d:any) => (
+                      <div key={d.date} className="flex justify-between text-sm border-b py-1"><span>{new Date(d.date).toLocaleDateString('fr-FR')}</span><span className="font-semibold">{d.total.toLocaleString()} F ({d.count})</span></div>
+                    ))}
+                    {(!paymentsData.revenue.byDay || paymentsData.revenue.byDay.length===0) && <div className="text-sm text-gray-400">Pas encore de revenus</div>}
+                  </div>
+                </div>
+                <div className="card p-4">
+                  <h3 className="font-semibold">Top payeurs (par utilisateur)</h3>
+                  <div className="mt-3 space-y-1 max-h-60 overflow-auto">
+                    {paymentsData.revenue.byUser?.map((u:any) => (
+                      <div key={u.phone} className="flex justify-between text-sm border-b py-1"><span>{u.name} {u.phone}<span className="text-xs text-gray-400"> {u.ville}</span></span><span className="font-bold">{u.total_spent.toLocaleString()} F ({u.payments_count})</span></div>
+                    ))}
+                    {(!paymentsData.revenue.byUser || paymentsData.revenue.byUser.length===0) && <div className="text-sm text-gray-400">Pas encore de payeurs</div>}
+                  </div>
+                </div>
+              </div>
+
+              <div className="card p-4">
+                <h3 className="font-semibold">Derniers paiements (100)</h3>
+                <div className="overflow-auto max-h-96">
+                  <table className="w-full text-sm mt-3">
+                    <thead className="bg-gray-50 sticky top-0"><tr><th className="p-2 text-left">Date</th><th>Utilisateur</th><th>Type</th><th>Montant</th><th>Statut</th><th>Annonce</th></tr></thead>
+                    <tbody>
+                      {paymentsData.payments?.map((p:any) => (
+                        <tr key={p.id} className="border-t">
+                          <td className="p-2 text-xs">{new Date(p.createdAt).toLocaleString('fr-FR')}</td>
+                          <td className="p-2"><div className="font-medium">{p.user.name}</div><div className="text-xs text-gray-500">{p.user.phone}</div></td>
+                          <td className="p-2"><span className={`px-2 py-1 rounded text-xs ${p.type==='BOOST'?'bg-amber-100 text-amber-700':'bg-blue-100 text-blue-700'}`}>{p.type} {p.durationDays}j</span></td>
+                          <td className="p-2 font-bold">{p.amountFcfa} F</td>
+                          <td className="p-2"><span className={`px-2 py-1 rounded-full text-xs ${p.status==='SUCCESS'?'bg-green-100 text-green-700':p.status==='PENDING'?'bg-amber-100':'bg-red-100'}`}>{p.status}</span></td>
+                          <td className="p-2 text-xs">{p.listing?.race || p.listing?.espece || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="card p-4">
+                <h3 className="font-semibold">Par type</h3>
+                <div className="flex gap-4 mt-2">
+                  {paymentsData.revenue.byType?.map((t:any) => (
+                    <div key={t.type} className="flex-1 p-3 bg-gray-50 rounded-xl text-center"><div className="text-xs text-gray-500">{t.type}</div><div className="font-bold">{t._sum.amountFcfa.toLocaleString()} F</div><div className="text-xs">{t._count.type} paiements</div></div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>

@@ -15,6 +15,12 @@ router.get('/', async (req, res) => {
   const limitNum = Math.min(50, parseInt(limit as string) || 20);
   const skip = (pageNum - 1) * limitNum;
 
+  // Expire boosts périmés (Phase 2)
+  await prisma.listing.updateMany({
+    where: { isBoosted: true, boostedUntil: { lt: new Date() } },
+    data: { isBoosted: false },
+  }).catch(()=>{});
+
   const where: any = {};
   // Par défaut, seulement APPROUVEE pour public, sauf si filtre statut admin
   if (!statut) where.statut = 'APPROUVEE';
@@ -37,8 +43,8 @@ router.get('/', async (req, res) => {
   const [listings, total] = await Promise.all([
     prisma.listing.findMany({
       where,
-      include: { user: { select: { name: true, phone: true, ville: true } } },
-      orderBy: { createdAt: 'desc' },
+      include: { user: { select: { name: true, phone: true, ville: true, isVerified: true } } },
+      orderBy: [{ isBoosted: 'desc' }, { createdAt: 'desc' }],
       skip,
       take: limitNum,
     }),

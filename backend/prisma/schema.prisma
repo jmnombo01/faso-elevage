@@ -37,21 +37,42 @@ enum MotifSignalement {
   AUTRE
 }
 
+enum PaymentType {
+  BOOST
+  BADGE
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  CANCELLED
+}
+
+enum PaymentProvider {
+  CINETPAY
+  PAYDUNYA
+  MOCK
+}
+
 model User {
-  id        String   @id @default(cuid())
-  phone     String   @unique
-  name      String
-  ville     String
-  quartier  String?
-  photoUrl  String?  @map("photo_url")
-  role      Role     @default(USER)
-  isBlocked Boolean  @default(false) @map("is_blocked")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id            String    @id @default(cuid())
+  phone         String    @unique
+  name          String
+  ville         String
+  quartier      String?
+  photoUrl      String?   @map("photo_url")
+  role          Role      @default(USER)
+  isBlocked     Boolean   @default(false) @map("is_blocked")
+  isVerified    Boolean   @default(false) @map("is_verified")
+  verifiedUntil DateTime? @map("verified_until")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
 
   listings  Listing[]
   favorites Favorite[]
   reports   Report[]   @relation("Reporter")
+  payments  Payment[]
 
   @@map("users")
 }
@@ -84,12 +105,15 @@ model Listing {
   disponibilite DateTime?     @db.Date
   statut        StatutAnnonce @default(EN_ATTENTE)
   vues          Int           @default(0)
+  isBoosted     Boolean       @default(false) @map("is_boosted")
+  boostedUntil  DateTime?     @map("boosted_until")
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
 
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   favorites Favorite[]
   reports   Report[]
+  payments  Payment[]
 
   @@index([espece])
   @@index([ville])
@@ -97,6 +121,7 @@ model Listing {
   @@index([statut])
   @@index([userId])
   @@index([createdAt])
+  @@index([isBoosted, boostedUntil])
   @@map("listings")
 }
 
@@ -128,4 +153,30 @@ model Report {
   @@index([listingId])
   @@index([isResolved])
   @@map("reports")
+}
+
+model Payment {
+  id              String          @id @default(cuid())
+  userId          String          @map("user_id")
+  listingId       String?         @map("listing_id")
+  type            PaymentType
+  amountFcfa      Int             @map("amount_fcfa")
+  durationDays    Int?            @map("duration_days")
+  provider        PaymentProvider @default(CINETPAY)
+  providerTxId    String?         @map("provider_tx_id")
+  status          PaymentStatus   @default(PENDING)
+  phone           String?         // numéro Mobile Money utilisé
+  operator        String?         // OM_BF, MOOV_BF, etc.
+  metadata        Json?           // réponse CinetPay brute
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([listingId])
+  @@index([status])
+  @@index([type])
+  @@map("payments")
 }

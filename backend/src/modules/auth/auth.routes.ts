@@ -4,6 +4,7 @@ import { signToken } from '../../config/jwt';
 import { otpRequestSchema, otpVerifySchema, phoneSchema } from '../../utils/validator';
 import { authMiddleware, AuthRequest } from '../../middlewares/auth';
 import { sendWhatsAppOtp, getWhatsAppLink } from '../../config/whatsapp';
+import { sendSmsOtp } from '../../config/sms';
 
 const router = Router();
 
@@ -34,17 +35,22 @@ router.post('/request-otp', async (req, res) => {
 
   console.log(`\n=== OTP pour ${phone}: ${code} ===\n`);
 
-  // Envoi WhatsApp (avec fallback mock)
-  const waResult = await sendWhatsAppOtp(phone, code);
+  // Envoi SMS via CinetPay (ou autre provider) + WhatsApp en parallèle
+  const [smsResult, waResult] = await Promise.all([
+    sendSmsOtp(phone, code),
+    sendWhatsAppOtp(phone, code),
+  ]);
+  
   const whatsappLink = getWhatsAppLink(phone, code);
 
-  // Phase 1 MVP: on retourne toujours debugOtp + lien WhatsApp pour tests sans SMS payant
+  // Phase 1 MVP: on retourne toujours debugOtp + liens pour tests sans coût SMS
   res.json({ 
-    message: 'OTP envoyé via WhatsApp',
+    message: 'OTP envoyé via SMS (CinetPay) + WhatsApp',
     debugOtp: code, 
     whatsappLink,
     whatsappStatus: waResult,
-    info: 'Phase 1 MVP: OTP affiché ici + envoyé via WhatsApp si configuré (voir WHATSAPP_PROVIDER)'
+    smsStatus: smsResult,
+    info: 'Phase 1 MVP: OTP affiché ici + envoyé via SMS/WhatsApp si configuré. CinetPay pour SMS: set SMS_PROVIDER=cinetpay + SMS_API_URL'
   });
 });
 

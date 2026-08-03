@@ -56,9 +56,9 @@ export default function ListingDetail() {
         </div>
 
         <div className="card p-6">
-          <h1 className="text-2xl font-bold">{listing.race || listing.espece} • {listing.quantite} disponible(s)</h1>
+          <h1 className="text-2xl font-bold">{listing.race || (listing.espece === 'AUTRE' ? (listing as any).especeCustom : listing.espece) || listing.espece} • {listing.quantite} disponible(s)</h1>
           <div className="flex flex-wrap gap-2 mt-3 text-sm">
-            <span className="bg-green-50 text-green-700 px-3 py-1 rounded-full">{listing.espece}</span>
+            <span className="bg-green-50 text-green-700 px-3 py-1 rounded-full">{listing.espece === 'AUTRE' ? ((listing as any).especeCustom || 'AUTRE') : listing.espece}</span>
             <span className="bg-gray-50 px-3 py-1 rounded-full flex items-center gap-1"><MapPin className="w-3 h-3" /> {listing.ville} {listing.quartier && `• ${listing.quartier}`}</span>
             <span className="bg-gray-50 px-3 py-1 rounded-full flex items-center gap-1"><Eye className="w-3 h-3" /> {listing.vues} vues</span>
             <span className="bg-gray-50 px-3 py-1 rounded-full flex items-center gap-1"><Calendar className="w-3 h-3" /> {new Date(listing.createdAt).toLocaleDateString('fr-FR')}</span>

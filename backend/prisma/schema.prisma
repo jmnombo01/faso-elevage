@@ -15,6 +15,7 @@ enum Espece {
   OVIN
   CAPRIN
   PORCIN
+  AUTRE
 }
 
 enum StatutAnnonce {
@@ -93,6 +94,7 @@ model Listing {
   id            String        @id @default(cuid())
   userId        String        @map("user_id")
   espece        Espece
+  especeCustom  String?       @map("espece_custom") // nom libre si AUTRE (âne, cheval, canard, dindon, etc.)
   race          String?
   ageMois       Int?          @map("age_mois")
   poidsKg       Float?        @map("poids_kg")

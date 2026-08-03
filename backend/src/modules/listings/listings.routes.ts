@@ -37,6 +37,7 @@ router.get('/', async (req, res) => {
     where.OR = [
       { race: { contains: q as string, mode: 'insensitive' } },
       { description: { contains: q as string, mode: 'insensitive' } },
+      { especeCustom: { contains: q as string, mode: 'insensitive' } },
     ];
   }
 
@@ -93,6 +94,7 @@ router.post('/', authMiddleware, upload.array('photos', 5), async (req: AuthRequ
     data: {
       userId,
       espece: data.espece as any,
+      especeCustom: (data as any).especeCustom,
       race: data.race,
       ageMois: data.ageMois,
       poidsKg: data.poidsKg,

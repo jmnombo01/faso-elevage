@@ -5,7 +5,7 @@ import { api, Listing } from '../lib/api';
 import ListingCard from '../components/ListingCard';
 
 const villesBF = ['Toutes', 'Ouagadougou', 'Bobo-Dioulasso', 'Koudougou', 'Ouahigouya', 'Kaya', 'Banfora', 'Dédougou', "Fada N'Gourma", 'Tenkodogo', 'Houndé'];
-const especes = ['Toutes', 'POULET', 'PINTADE', 'LAPIN', 'BOVIN', 'OVIN', 'CAPRIN', 'PORCIN'];
+const especes = ['Toutes', 'POULET', 'PINTADE', 'LAPIN', 'BOVIN', 'OVIN', 'CAPRIN', 'PORCIN', 'AUTRE'];
 
 export default function Home() {
   const [listings, setListings] = useState<Listing[]>([]);
@@ -68,7 +68,7 @@ export default function Home() {
       <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
         {especes.slice(1).map(sp => (
           <button key={sp} onClick={() => { setEspece(sp); setTimeout(fetch, 0); }} className={`card p-3 text-center hover:shadow ${espece === sp ? 'ring-2 ring-primary' : ''}`}>
-            <div className="text-2xl">{sp === 'POULET' ? '🐔' : sp === 'BOVIN' ? '🐄' : sp === 'OVIN' ? '🐑' : sp === 'CAPRIN' ? '🐐' : sp === 'PORCIN' ? '🐖' : sp === 'LAPIN' ? '🐰' : '🦃'}</div>
+            <div className="text-2xl">{sp === 'POULET' ? '🐔' : sp === 'BOVIN' ? '🐄' : sp === 'OVIN' ? '🐑' : sp === 'CAPRIN' ? '🐐' : sp === 'PORCIN' ? '🐖' : sp === 'LAPIN' ? '🐰' : sp === 'AUTRE' ? '🦄' : '🦃'}</div>
             <div className="text-xs font-semibold mt-1">{sp}</div>
           </button>
         ))}

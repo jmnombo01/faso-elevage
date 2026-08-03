@@ -7,7 +7,7 @@ import { useAuth } from '../../lib/store';
 export default function PublierPage() {
   const { isAuth } = useAuth();
   const router = useRouter();
-  const [form, setForm] = useState({ espece: 'POULET', race: '', ageMois: '', poidsKg: '', quantite: '1', prixFcfa: '', ville: 'Ouagadougou', quartier: '', description: '' });
+  const [form, setForm] = useState({ espece: 'POULET', especeCustom: '', race: '', ageMois: '', poidsKg: '', quantite: '1', prixFcfa: '', ville: 'Ouagadougou', quartier: '', description: '' });
   const [photos, setPhotos] = useState<FileList | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -15,6 +15,10 @@ export default function PublierPage() {
 
   const submit = async (e: any) => {
     e.preventDefault();
+    if (form.espece === 'AUTRE' && !form.especeCustom) {
+      alert('Veuillez préciser le nom de l\'animal (ex: Âne, Cheval, Canard, Dindon)');
+      return;
+    }
     setLoading(true);
     try {
       const fd = new FormData();
@@ -30,18 +34,22 @@ export default function PublierPage() {
   return (
     <div className="max-w-2xl mx-auto card p-6">
       <h1 className="text-2xl font-bold">Publier une annonce</h1>
-      <p className="text-sm text-gray-500">Gratuit en Phase 1 • En moins de 2 minutes depuis ton téléphone</p>
+      <p className="text-sm text-gray-500">Gratuit en Phase 1 • Tous animaux acceptés • En moins de 2 minutes</p>
       <form onSubmit={submit} className="mt-6 space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div><label className="text-sm font-medium">Espèce*</label>
             <select value={form.espece} onChange={e => setForm({ ...form, espece: e.target.value })} className="input mt-1">
-              {['POULET','PINTADE','LAPIN','BOVIN','OVIN','CAPRIN','PORCIN'].map(s => <option key={s}>{s}</option>)}
-            </select></div>
+              {['POULET','PINTADE','LAPIN','BOVIN','OVIN','CAPRIN','PORCIN','AUTRE'].map(s => <option key={s} value={s}>{s}{s==='AUTRE'?' (autre animal)':''}</option>)}
+            </select>
+            {form.espece === 'AUTRE' && (
+              <input required value={form.especeCustom} onChange={e => setForm({ ...form, especeCustom: e.target.value })} placeholder="Ex: Âne, Cheval, Canard, Dindon, Pintade, Oie..." className="input mt-2 border-amber-300 focus:ring-amber-100 focus:border-amber-400" />
+            )}
+          </div>
           <div><label className="text-sm font-medium">Prix FCFA*</label><input required type="number" value={form.prixFcfa} onChange={e => setForm({ ...form, prixFcfa: e.target.value })} placeholder="3500" className="input mt-1" /></div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <div><label className="text-sm">Race</label><input value={form.race} onChange={e => setForm({ ...form, race: e.target.value })} placeholder="Ex: Bali-Bali, Goudali" className="input mt-1" /></div>
+          <div><label className="text-sm">Race / Variété</label><input value={form.race} onChange={e => setForm({ ...form, race: e.target.value })} placeholder="Ex: Bali-Bali, Goudali, ou libre" className="input mt-1" /></div>
           <div><label className="text-sm">Quantité*</label><input required type="number" value={form.quantite} onChange={e => setForm({ ...form, quantite: e.target.value })} className="input mt-1" /></div>
         </div>
 
@@ -63,7 +71,7 @@ export default function PublierPage() {
         <div><label className="text-sm">Photos (max 5, moins de 5MB chacune)</label><input type="file" multiple accept="image/*" onChange={e => setPhotos(e.target.files)} className="input mt-1" /></div>
 
         <button disabled={loading} className="btn-primary w-full py-4 text-lg">{loading ? 'Publication...' : 'Publier gratuitement'}</button>
-        <p className="text-xs text-center text-gray-400">Ton annonce sera validée manuellement pour éviter arnaques.</p>
+        <p className="text-xs text-center text-gray-400">Ton annonce sera validée manuellement pour éviter arnaques. Tous animaux d'élevage acceptés.</p>
       </form>
     </div>
   );

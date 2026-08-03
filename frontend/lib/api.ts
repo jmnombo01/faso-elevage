@@ -15,6 +15,7 @@ api.interceptors.request.use((config) => {
 export interface Listing {
   id: string;
   espece: string;
+  especeCustom?: string;
   race?: string;
   ageMois?: number;
   poidsKg?: number;

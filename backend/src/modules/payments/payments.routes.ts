@@ -34,18 +34,37 @@ router.post('/init-boost', authMiddleware, async (req: AuthRequest, res) => {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) return res.status(404).json({ error: 'User not found' });
 
+  // Mode mock/test marché : si pas de creds CinetPay, boost gratuit pour validation
+  const isMock = !process.env.CINETPAY_APIKEY || !process.env.CINETPAY_SITE_ID;
+
   const payment = await prisma.payment.create({
     data: {
       userId,
       listingId,
       type: 'BOOST',
-      amountFcfa: pricing.amount,
+      amountFcfa: isMock ? 0 : pricing.amount, // gratuit en mock pour tests marché
       durationDays,
-      provider: 'CINETPAY',
-      status: 'PENDING',
+      provider: isMock ? 'MOCK' : 'CINETPAY',
+      status: isMock ? 'SUCCESS' : 'PENDING',
       phone: user.phone,
     },
   });
+
+  if (isMock) {
+    // Applique boost immédiatement en mode mock/test
+    const until = new Date();
+    until.setDate(until.getDate() + durationDays);
+    await prisma.listing.update({
+      where: { id: listingId },
+      data: { isBoosted: true, boostedUntil: until },
+    });
+    return res.json({ 
+      payment, 
+      paymentUrl: `${process.env.FRONTEND_URL || 'https://frontend-teal-xi-19.vercel.app'}/mes-annonces?boosted=${listingId}`,
+      mock: true,
+      message: `Boost ${durationDays} jours activé gratuitement (mode test marché - CinetPay non configuré). En prod: ${pricing.amount}F via Mobile Money`
+    });
+  }
 
   const returnUrl = `${process.env.FRONTEND_URL || 'https://frontend-teal-xi-19.vercel.app'}/mes-annonces?payment=${payment.id}`;
   const notifyUrl = `${process.env.BACKEND_URL || 'https://faso-elevage-production.up.railway.app'}/api/payments/webhook/cinetpay`;
@@ -89,17 +108,34 @@ router.post('/init-badge', authMiddleware, async (req: AuthRequest, res) => {
   const pricing = BADGE_PRICING[durationDays as keyof typeof BADGE_PRICING];
   if (!pricing) return res.status(400).json({ error: 'Tarif badge invalide' });
 
+  const isMock = !process.env.CINETPAY_APIKEY || !process.env.CINETPAY_SITE_ID;
+
   const payment = await prisma.payment.create({
     data: {
       userId,
       type: 'BADGE',
-      amountFcfa: pricing.amount,
+      amountFcfa: isMock ? 0 : pricing.amount,
       durationDays,
-      provider: 'CINETPAY',
-      status: 'PENDING',
+      provider: isMock ? 'MOCK' : 'CINETPAY',
+      status: isMock ? 'SUCCESS' : 'PENDING',
       phone: user.phone,
     },
   });
+
+  if (isMock) {
+    const until = new Date();
+    until.setDate(until.getDate() + durationDays);
+    await prisma.user.update({
+      where: { id: userId },
+      data: { isVerified: true, verifiedUntil: until },
+    });
+    return res.json({
+      payment,
+      paymentUrl: `${process.env.FRONTEND_URL || 'https://frontend-teal-xi-19.vercel.app'}/profil?badge=success`,
+      mock: true,
+      message: `Badge vérifié ${durationDays} jours activé gratuitement (mode test). En prod: ${pricing.amount}F`
+    });
+  }
 
   const returnUrl = `${process.env.FRONTEND_URL || 'https://frontend-teal-xi-19.vercel.app'}/profil?badge_payment=${payment.id}`;
   const notifyUrl = `${process.env.BACKEND_URL || 'https://faso-elevage-production.up.railway.app'}/api/payments/webhook/cinetpay`;

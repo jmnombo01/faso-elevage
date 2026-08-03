@@ -13,7 +13,8 @@ export const otpVerifySchema = z.object({
   ville: z.string().min(2).max(50).optional(),
 });
 
-export const listingCreateSchema = z.object({
+// Base schema sans refine pour permettre partial()
+const baseListingSchema = z.object({
   espece: z.enum(['POULET','PINTADE','LAPIN','BOVIN','OVIN','CAPRIN','PORCIN','AUTRE']),
   especeCustom: z.string().min(2).max(50).optional(),
   race: z.string().max(100).optional(),
@@ -25,10 +26,19 @@ export const listingCreateSchema = z.object({
   quartier: z.string().max(100).optional(),
   description: z.string().max(1000).optional(),
   disponibilite: z.string().optional(),
-}).refine(data => {
-  if (data.espece === 'AUTRE' && !data.especeCustom) return false;
-  return true;
-}, { message: 'Si espèce AUTRE, veuillez préciser le nom de l animal (ex: Âne, Cheval, Canard)', path: ['especeCustom'] });
+});
+
+export const listingCreateSchema = baseListingSchema.superRefine((data, ctx) => {
+  if (data.espece === 'AUTRE' && !data.especeCustom) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Si espèce AUTRE, veuillez préciser le nom de l animal (ex: Âne, Cheval, Canard)',
+      path: ['especeCustom'],
+    });
+  }
+});
+
+export const listingUpdateSchema = baseListingSchema.partial();
 
 export const reportSchema = z.object({
   listingId: z.string(),

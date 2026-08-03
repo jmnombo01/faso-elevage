@@ -2,7 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import { prisma } from '../../config/db';
 import { authMiddleware, AuthRequest } from '../../middlewares/auth';
-import { listingCreateSchema } from '../../utils/validator';
+import { listingCreateSchema, listingUpdateSchema } from '../../utils/validator';
 import { uploadToCloudinary } from '../../config/cloudinary';
 
 const router = Router();
@@ -118,7 +118,7 @@ router.put('/:id', authMiddleware, upload.array('photos', 5), async (req: AuthRe
   if (!listing) return res.status(404).json({ error: 'Annonce introuvable' });
   if (listing.userId !== req.user!.userId) return res.status(403).json({ error: 'Non autorisé' });
 
-  const parsed = listingCreateSchema.partial().safeParse(req.body);
+  const parsed = listingUpdateSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.errors[0].message });
 
   const files = req.files as Express.Multer.File[] | undefined;
